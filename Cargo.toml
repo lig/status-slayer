@@ -9,4 +9,5 @@ serde_json = "1.0.133"
 signal-hook = "0.3.17"
 
 [dev-dependencies]
+pretty_assertions = "1.4.1"
 rstest = "0.23.0"

@@ -25,13 +25,21 @@ impl Header {
     }
 }
 
+impl Default for Header {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[derive(Debug, Serialize)]
+#[serde(untagged)]
 pub enum MinWidth {
     Pixels(u32),
     WidthOf(String),
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "lowercase")] 
 pub enum Align {
     Left,
     Right,
@@ -39,6 +47,7 @@ pub enum Align {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "lowercase")] 
 pub enum Markup {
     Pango,
     None,
@@ -118,4 +127,45 @@ impl Block {
 }
 
 #[cfg(test)]
-mod tests {}
+mod tests {
+    use pretty_assertions::assert_eq;
+    use rstest::rstest;
+
+    use super::Block;
+
+    #[rstest]
+    fn should_implement_swaybar_protocol() {
+        let block = Block::new(
+            "test full text",
+            "test short text",
+            "test name",
+            "test instance",
+        );
+
+        let block_json = serde_json::to_string_pretty(&block).unwrap();
+
+        println!("{}", block_json);
+        assert_eq!(
+            block_json,
+            r##"{
+  "full_text": "test full text",
+  "short_text": "test short text",
+  "color": "#000000",
+  "background": "#ffffff",
+  "border": "#000000",
+  "border_top": 1,
+  "border_bottom": 1,
+  "border_left": 1,
+  "border_right": 1,
+  "min_width": "test short text",
+  "align": "left",
+  "name": "test name",
+  "instance": "test instance",
+  "urgent": false,
+  "separator": true,
+  "separator_block_width": 9,
+  "markup": "none"
+}"##
+        );
+    }
+}
