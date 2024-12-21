@@ -39,7 +39,7 @@ pub enum MinWidth {
 }
 
 #[derive(Debug, Serialize)]
-#[serde(rename_all = "lowercase")] 
+#[serde(rename_all = "lowercase")]
 pub enum Align {
     Left,
     Right,
@@ -47,10 +47,16 @@ pub enum Align {
 }
 
 #[derive(Debug, Serialize)]
-#[serde(rename_all = "lowercase")] 
+#[serde(rename_all = "lowercase")]
 pub enum Markup {
     Pango,
     None,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(transparent)]
+pub struct Status {
+    pub blocks: Vec<Block>,
 }
 
 #[derive(Debug, Serialize)]
@@ -135,37 +141,64 @@ mod tests {
 
     #[rstest]
     fn should_implement_swaybar_protocol() {
-        let block = Block::new(
-            "test full text",
-            "test short text",
-            "test name",
-            "test instance",
+        let block1 = Block::new(
+            "test full text 1",
+            "test short text 1",
+            "test name 1",
+            "test instance 1",
+        );
+        let block2 = Block::new(
+            "test full text 2",
+            "test short text 2",
+            "test name 2",
+            "test instance 2",
         );
 
-        let block_json = serde_json::to_string_pretty(&block).unwrap();
+        let status_json = serde_json::to_string_pretty(&vec![block1, block2]).unwrap();
 
-        println!("{}", block_json);
+        println!("{}", status_json);
         assert_eq!(
-            block_json,
-            r##"{
-  "full_text": "test full text",
-  "short_text": "test short text",
-  "color": "#000000",
-  "background": "#ffffff",
-  "border": "#000000",
-  "border_top": 1,
-  "border_bottom": 1,
-  "border_left": 1,
-  "border_right": 1,
-  "min_width": "test short text",
-  "align": "left",
-  "name": "test name",
-  "instance": "test instance",
-  "urgent": false,
-  "separator": true,
-  "separator_block_width": 9,
-  "markup": "none"
-}"##
+            status_json,
+            r##"[
+  {
+    "full_text": "test full text 1",
+    "short_text": "test short text 1",
+    "color": "#000000",
+    "background": "#ffffff",
+    "border": "#000000",
+    "border_top": 1,
+    "border_bottom": 1,
+    "border_left": 1,
+    "border_right": 1,
+    "min_width": "test short text 1",
+    "align": "left",
+    "name": "test name 1",
+    "instance": "test instance 1",
+    "urgent": false,
+    "separator": true,
+    "separator_block_width": 9,
+    "markup": "none"
+  },
+  {
+    "full_text": "test full text 2",
+    "short_text": "test short text 2",
+    "color": "#000000",
+    "background": "#ffffff",
+    "border": "#000000",
+    "border_top": 1,
+    "border_bottom": 1,
+    "border_left": 1,
+    "border_right": 1,
+    "min_width": "test short text 2",
+    "align": "left",
+    "name": "test name 2",
+    "instance": "test instance 2",
+    "urgent": false,
+    "separator": true,
+    "separator_block_width": 9,
+    "markup": "none"
+  }
+]"##
         );
     }
 }
