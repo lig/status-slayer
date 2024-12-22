@@ -65,7 +65,7 @@ impl Iterator for StatusGenerator {
             blocks.push(Block::new(&stdout, &stdout, "command", &section.name));
         }
 
-        Some(self.to_json(&Status { blocks }))
+        Some(format!("{},", self.to_json(&Status { blocks })))
     }
 }
 
@@ -96,7 +96,7 @@ mod tests {
             sections: vec![
                 Section {
                     name: "first section".to_string(),
-                    command: "uname -r".to_string(),
+                    command: "uname -s".to_string(),
                 },
                 Section {
                     name: "second section".to_string(),
@@ -123,8 +123,8 @@ mod tests {
             status1,
             r##"[
   {
-    "full_text": "6.12.5-200.fc41.x86_64",
-    "short_text": "6.12.5-200.fc41.x86_64",
+    "full_text": "Linux",
+    "short_text": "Linux",
     "color": "#000000",
     "background": "#ffffff",
     "border": "#000000",
@@ -132,7 +132,7 @@ mod tests {
     "border_bottom": 1,
     "border_left": 1,
     "border_right": 1,
-    "min_width": "6.12.5-200.fc41.x86_64",
+    "min_width": "Linux",
     "align": "left",
     "name": "command",
     "instance": "first section",
@@ -160,7 +160,7 @@ mod tests {
     "separator_block_width": 9,
     "markup": "none"
   }
-]"##,
+],"##,
         );
     }
 }

@@ -1,0 +1,7 @@
+[[section]]
+name = "kernel release"
+command = "uname -r"
+
+[[section]]
+name = "date and time"
+command = 'date "+%Y-%m-%d %H:%M:%S"'
