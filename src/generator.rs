@@ -124,38 +124,20 @@ mod tests {
             r##"[
   {
     "full_text": "Linux",
-    "color": "#000000",
-    "background": "#ffffff",
-    "border": "#000000",
-    "border_top": 1,
-    "border_bottom": 1,
-    "border_left": 1,
-    "border_right": 1,
     "min_width": "Linux",
-    "align": "left",
     "name": "command",
     "instance": "first section",
     "urgent": false,
     "separator": true,
-    "separator_block_width": 9,
     "markup": "none"
   },
   {
     "full_text": "2024-12-21 21:44:54",
-    "color": "#000000",
-    "background": "#ffffff",
-    "border": "#000000",
-    "border_top": 1,
-    "border_bottom": 1,
-    "border_left": 1,
-    "border_right": 1,
     "min_width": "2024-12-21 21:44:54",
-    "align": "left",
     "name": "command",
     "instance": "second section",
     "urgent": false,
     "separator": true,
-    "separator_block_width": 9,
     "markup": "none"
   }
 ],"##,

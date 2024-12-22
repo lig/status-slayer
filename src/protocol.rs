@@ -67,19 +67,26 @@ pub struct Block {
     #[serde(skip_serializing_if = "Option::is_none")] 
     pub short_text: Option<String>,
     // The text color to use in #RRGGBBAA or #RRGGBB notation
-    pub color: String,
+    #[serde(skip_serializing_if = "Option::is_none")] 
+    pub color: Option<String>,
     // The background color for the block in #RRGGBBAA or #RRGGBB notation
-    pub background: String,
+    #[serde(skip_serializing_if = "Option::is_none")] 
+    pub background: Option<String>,
     // The border color for the block in #RRGGBBAA or #RRGGBB notation
-    pub border: String,
+    #[serde(skip_serializing_if = "Option::is_none")] 
+    pub border: Option<String>,
     // The height in pixels of the top border. The default is 1
-    pub border_top: u32,
+    #[serde(skip_serializing_if = "Option::is_none")] 
+    pub border_top: Option<u32>,
     // The height in pixels of the bottom border. The default is 1
-    pub border_bottom: u32,
+    #[serde(skip_serializing_if = "Option::is_none")] 
+    pub border_bottom: Option<u32>,
     // The width in pixels of the left border. The default is 1
-    pub border_left: u32,
+    #[serde(skip_serializing_if = "Option::is_none")] 
+    pub border_left: Option<u32>,
     // The width in pixels of the right border. The default is 1
-    pub border_right: u32,
+    #[serde(skip_serializing_if = "Option::is_none")] 
+    pub border_right: Option<u32>,
     /* The minimum width to use for the block. This can either be given in pixels or
     a string can be given to allow for it to be calculated based on the width of the
     string. */
@@ -87,7 +94,8 @@ pub struct Block {
     /* If the text does not span the full width of the block, this specifies how the
     text should be aligned inside of the block. This can be left (default), right, or
     center. */
-    pub align: Align,
+    #[serde(skip_serializing_if = "Option::is_none")] 
+    pub align: Option<Align>,
     /* A name for the block. This is only used to identify the block for click events.
     If set, each block should have a unique name and instance pair. */
     pub name: String,
@@ -103,7 +111,8 @@ pub struct Block {
     pub separator: bool,
     /* The amount of pixels to leave blank after the block. The separator text will be
     displayed centered in this gap. The default is 9 pixels. */
-    pub separator_block_width: u32,
+    #[serde(skip_serializing_if = "Option::is_none")] 
+    pub separator_block_width: Option<u32>,
     /* The type of markup to use when parsing the text for the block. This can either be
     pango or none (default). */
     pub markup: Markup,
@@ -114,20 +123,20 @@ impl Block {
         Self {
             full_text: full_text.to_string(),
             short_text: None,
-            color: String::from("#000000"),
-            background: String::from("#ffffff"),
-            border: String::from("#000000"),
-            border_top: 1,
-            border_bottom: 1,
-            border_left: 1,
-            border_right: 1,
+            color: None,
+            background: None,
+            border: None,
+            border_top: None,
+            border_bottom: None,
+            border_left: None,
+            border_right: None,
             min_width: MinWidth::WidthOf(full_text.to_string()),
-            align: Align::Left,
+            align: None,
             name: name.to_string(),
             instance: instance.to_string(),
             urgent: false,
             separator: true,
-            separator_block_width: 9,
+            separator_block_width: None,
             markup: Markup::None,
         }
     }
@@ -161,38 +170,20 @@ mod tests {
             r##"[
   {
     "full_text": "test full text 1",
-    "color": "#000000",
-    "background": "#ffffff",
-    "border": "#000000",
-    "border_top": 1,
-    "border_bottom": 1,
-    "border_left": 1,
-    "border_right": 1,
     "min_width": "test full text 1",
-    "align": "left",
     "name": "test name 1",
     "instance": "test instance 1",
     "urgent": false,
     "separator": true,
-    "separator_block_width": 9,
     "markup": "none"
   },
   {
     "full_text": "test full text 2",
-    "color": "#000000",
-    "background": "#ffffff",
-    "border": "#000000",
-    "border_top": 1,
-    "border_bottom": 1,
-    "border_left": 1,
-    "border_right": 1,
     "min_width": "test full text 2",
-    "align": "left",
     "name": "test name 2",
     "instance": "test instance 2",
     "urgent": false,
     "separator": true,
-    "separator_block_width": 9,
     "markup": "none"
   }
 ]"##
