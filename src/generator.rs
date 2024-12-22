@@ -62,7 +62,7 @@ impl Iterator for StatusGenerator {
 
             let stdout = String::from_utf8_lossy(output.stdout.trim_ascii_end());
 
-            blocks.push(Block::new(&stdout, &stdout, "command", &section.name));
+            blocks.push(Block::new(&stdout, "command", &section.name));
         }
 
         Some(format!("{},", self.to_json(&Status { blocks })))
@@ -124,7 +124,6 @@ mod tests {
             r##"[
   {
     "full_text": "Linux",
-    "short_text": "Linux",
     "color": "#000000",
     "background": "#ffffff",
     "border": "#000000",
@@ -143,7 +142,6 @@ mod tests {
   },
   {
     "full_text": "2024-12-21 21:44:54",
-    "short_text": "2024-12-21 21:44:54",
     "color": "#000000",
     "background": "#ffffff",
     "border": "#000000",

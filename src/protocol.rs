@@ -64,7 +64,8 @@ pub struct Block {
     // The text that will be displayed. If missing, the block will be skipped
     pub full_text: String,
     // If given and the text needs to be shortened due to space, this will be displayed instead of full_text
-    pub short_text: String,
+    #[serde(skip_serializing_if = "Option::is_none")] 
+    pub short_text: Option<String>,
     // The text color to use in #RRGGBBAA or #RRGGBB notation
     pub color: String,
     // The background color for the block in #RRGGBBAA or #RRGGBB notation
@@ -109,10 +110,10 @@ pub struct Block {
 }
 
 impl Block {
-    pub fn new(full_text: &str, short_text: &str, name: &str, instance: &str) -> Self {
+    pub fn new(full_text: &str, name: &str, instance: &str) -> Self {
         Self {
             full_text: full_text.to_string(),
-            short_text: short_text.to_string(),
+            short_text: None,
             color: String::from("#000000"),
             background: String::from("#ffffff"),
             border: String::from("#000000"),
@@ -120,7 +121,7 @@ impl Block {
             border_bottom: 1,
             border_left: 1,
             border_right: 1,
-            min_width: MinWidth::WidthOf(short_text.to_string()),
+            min_width: MinWidth::WidthOf(full_text.to_string()),
             align: Align::Left,
             name: name.to_string(),
             instance: instance.to_string(),
@@ -143,13 +144,11 @@ mod tests {
     fn should_implement_swaybar_protocol() {
         let block1 = Block::new(
             "test full text 1",
-            "test short text 1",
             "test name 1",
             "test instance 1",
         );
         let block2 = Block::new(
             "test full text 2",
-            "test short text 2",
             "test name 2",
             "test instance 2",
         );
@@ -162,7 +161,6 @@ mod tests {
             r##"[
   {
     "full_text": "test full text 1",
-    "short_text": "test short text 1",
     "color": "#000000",
     "background": "#ffffff",
     "border": "#000000",
@@ -170,7 +168,7 @@ mod tests {
     "border_bottom": 1,
     "border_left": 1,
     "border_right": 1,
-    "min_width": "test short text 1",
+    "min_width": "test full text 1",
     "align": "left",
     "name": "test name 1",
     "instance": "test instance 1",
@@ -181,7 +179,6 @@ mod tests {
   },
   {
     "full_text": "test full text 2",
-    "short_text": "test short text 2",
     "color": "#000000",
     "background": "#ffffff",
     "border": "#000000",
@@ -189,7 +186,7 @@ mod tests {
     "border_bottom": 1,
     "border_left": 1,
     "border_right": 1,
-    "min_width": "test short text 2",
+    "min_width": "test full text 2",
     "align": "left",
     "name": "test name 2",
     "instance": "test instance 2",
