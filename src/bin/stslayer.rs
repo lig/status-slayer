@@ -18,7 +18,7 @@ fn main() {
 
     let config_path = args.config;
     if !config_path.is_file() {
-        panic!("COnfig file doesn't exist or is not a regular file")
+        panic!("Config file doesn't exist or is not a regular file")
     }
 
     let config: Config =
