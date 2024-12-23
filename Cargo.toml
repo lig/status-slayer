@@ -11,5 +11,8 @@ signal-hook = "0.3.17"
 toml = "0.8.19"
 
 [dev-dependencies]
+assert_cmd = { version = "2.0.16", features = ["color-auto"] }
 pretty_assertions = "1.4.1"
+regex = "1.11.1"
 rstest = "0.23.0"
+wait-timeout = "0.2.0"

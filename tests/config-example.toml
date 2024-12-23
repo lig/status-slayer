@@ -1,6 +1,6 @@
 [[section]]
 name = "kernel release"
-command = "uname -r"
+command = "uname -s"
 
 [[section]]
 name = "date and time"
