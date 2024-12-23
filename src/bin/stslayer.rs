@@ -1,7 +1,8 @@
 use std::path::PathBuf;
 
 use clap::Parser;
-use stslayer::{config::Config, generator::StatusGenerator};
+use stslayer::{config::Config, controller::StatusController};
+use tokio::sync::mpsc;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -17,11 +18,21 @@ struct Args {
 async fn main() {
     let args = Args::parse();
 
-    let config_path = args.config;
+    let config = Config::from_file(&args.config).unwrap();
 
-    let config = Config::from_file(&config_path).unwrap();
+    let (tx, mut rx) = mpsc::channel(1);
 
-    for status in StatusGenerator::new(config) {
-        println!("{}", status);
-    }
+    let echo_task = tokio::spawn(async move {
+        while let Some(status) = rx.recv().await {
+            println!("{}", status);
+        }
+    });
+
+    let st_task = tokio::spawn(async move {
+        let mut status_controller = StatusController::new(config, tx);
+        status_controller.run().await.unwrap();
+    });
+
+    echo_task.await.unwrap();
+    st_task.await.unwrap();
 }
