@@ -1,9 +1,24 @@
+use std::{fs, path::Path};
+
+use anyhow::{bail, Result};
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize, PartialEq)]
 pub struct Config {
     #[serde(alias = "section")]
     pub sections: Vec<Section>,
+}
+
+impl Config {
+    pub fn from_file(config_path: &Path) -> Result<Self> {
+        if !config_path.is_file() {
+            bail!("Config file doesn't exist or is not a regular file")
+        }
+        Ok(
+            toml::from_str(&fs::read_to_string(config_path).expect("Cannot read config file"))
+                .expect("Config file format error"),
+        )
+    }
 }
 
 #[derive(Debug, Deserialize, PartialEq)]

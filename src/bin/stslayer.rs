@@ -1,4 +1,4 @@
-use std::{fs, path::PathBuf};
+use std::path::PathBuf;
 
 use clap::Parser;
 use stslayer::{config::Config, generator::StatusGenerator};
@@ -13,17 +13,13 @@ struct Args {
     config: PathBuf,
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let args = Args::parse();
 
     let config_path = args.config;
-    if !config_path.is_file() {
-        panic!("Config file doesn't exist or is not a regular file")
-    }
 
-    let config: Config =
-        toml::from_str(&fs::read_to_string(config_path).expect("Cannot read config file"))
-            .expect("Config file format error");
+    let config = Config::from_file(&config_path).unwrap();
 
     for status in StatusGenerator::new(config) {
         println!("{}", status);
