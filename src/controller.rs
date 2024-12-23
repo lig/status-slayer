@@ -27,22 +27,34 @@ impl StatusController {
         }
     }
 
-    pub async fn run(&mut self) -> Result<()> {
-        self.sender.send(self.get_header()).await.unwrap();
+    pub async fn run(&self) -> Result<()> {
+        self.sender
+            .send(self.get_header())
+            .await
+            .unwrap();
 
         loop {
-            let next_line = self.get_status();
-            self.sender.send(next_line).await.unwrap();
+            self.sender
+                .send(self.get_status())
+                .await
+                .unwrap();
             thread::sleep(self.interval);
         }
     }
 
     fn get_header(&self) -> String {
-        return format!("{}\n[", self.to_json(Header::new()));
+        format!("{}\n[", self.to_json(self.get_header_data()))
     }
 
-
     fn get_status(&self) -> String {
+        format!("{},", self.to_json(self.get_status_data()))
+    }
+
+    fn get_header_data(&self) -> Header {
+        Header::new()
+    }
+
+    fn get_status_data(&self) -> Status {
         let mut blocks: Vec<Block> = vec![];
 
         for section in &self.config.sections {
@@ -64,7 +76,7 @@ impl StatusController {
             blocks.push(Block::new(&stdout, "command", &section.name));
         }
 
-        format!("{},", self.to_json(&Status { blocks }))
+        Status { blocks }
     }
 
     fn to_json<T: Serialize>(&self, value: T) -> String {
@@ -86,7 +98,7 @@ mod tests {
     use super::StatusController;
 
     #[rstest]
-    fn should_generate_header() {
+    fn should_produce_header() {
         let (tx, _rx) = mpsc::channel(1);
 
         let status_controller = StatusController::new(Config { sections: vec![] }, tx);
@@ -100,7 +112,7 @@ mod tests {
     }
 
     #[rstest]
-    fn should_generate_status() {
+    fn should_produce_status() {
         let (tx, _rx) = mpsc::channel(1);
 
         let mut status_controller = StatusController::new(

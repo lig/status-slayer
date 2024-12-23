@@ -23,7 +23,7 @@ async fn main() {
     let (tx, mut rx) = mpsc::channel(1);
 
     let st_task = tokio::spawn(async move {
-        let mut status_controller = StatusController::new(config, tx);
+        let status_controller = StatusController::new(config, tx);
         status_controller.run().await.unwrap();
     });
 
