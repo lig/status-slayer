@@ -1,7 +1,7 @@
-use std::{fs, path::Path};
+use std::{fs, path::Path, time::Duration};
 
 use anyhow::{bail, Result};
-use serde::Deserialize;
+use serde::{de, Deserialize};
 
 #[derive(Debug, Deserialize, PartialEq)]
 pub struct Config {
@@ -21,29 +21,72 @@ impl Config {
     }
 }
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, Deserialize, PartialEq, Clone)]
 pub struct Section {
     pub name: String,
     pub command: String,
+    #[serde(default)]
+    pub interval: Interval,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum Interval {
+    Oneshot,
+    Seconds(Duration),
+}
+
+impl Default for Interval {
+    fn default() -> Self {
+        Self::Seconds(Duration::from_secs(1))
+    }
+}
+
+impl<'de> Deserialize<'de> for Interval {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let value: serde_json::Value = Deserialize::deserialize(deserializer)?;
+        match value {
+            serde_json::Value::String(s) if s.to_lowercase() == "oneshot" => Ok(Interval::Oneshot),
+            serde_json::Value::Number(n) if n.is_u64() => {
+                let secs = n.as_u64().unwrap();
+                if secs >= 1 {
+                    Ok(Interval::Seconds(Duration::from_secs(secs)))
+                } else {
+                    Err(de::Error::custom("Interval must be greater or equal `1`"))
+                }
+            }
+            _ => Err(de::Error::custom("Invalid interval value")),
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
+    use std::time::Duration;
+
     use pretty_assertions::assert_eq;
     use rstest::rstest;
 
-    use super::{Config, Section};
+    use super::{Config, Interval, Section};
 
     #[rstest]
     fn should_parse_config() {
         let config_data = r#"
             [[section]]
-            name = "first section"
+            name = "oneshot interval"
             command = "uname -r"
+            interval = "oneshot"
 
             [[section]]
-            name = "second section"
+            name = "default interval"
             command = 'date "+%Y-%m-%d %H:%M:%S"'
+
+            [[section]]
+            name = "custom interval"
+            command = 'date "+%Y-%m-%d %H:%M"'
+            interval = 60
         "#;
 
         let config: Config = toml::from_str(config_data).unwrap();
@@ -53,12 +96,19 @@ mod tests {
             Config {
                 sections: vec![
                     Section {
-                        name: "first section".to_string(),
+                        name: "oneshot interval".to_string(),
                         command: "uname -r".to_string(),
+                        interval: Interval::Oneshot,
                     },
                     Section {
-                        name: "second section".to_string(),
+                        name: "default interval".to_string(),
                         command: r#"date "+%Y-%m-%d %H:%M:%S""#.to_string(),
+                        interval: Interval::default(),
+                    },
+                    Section {
+                        name: "custom interval".to_string(),
+                        command: r#"date "+%Y-%m-%d %H:%M""#.to_string(),
+                        interval: Interval::Seconds(Duration::from_secs(60)),
                     },
                 ]
             }
