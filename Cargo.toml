@@ -1,7 +1,16 @@
 [package]
 name = "stslayer"
 version = "0.1.0"
+authors = ["Serge Matveenko <lig@countzero.co>"]
 edition = "2021"
+description = "Status Slayer is a configurable implementation of status command for Sway WM using Swaybar Protocol"
+# documentation = ""
+readme = "README.md"
+# homepage = ""
+repository = "https://codeberg.org/lig/status-slayer"
+license = "MIT"
+keywords = ["sway", "swaybar", "statusbar", "config", "toml"]
+categories = ["command-line-utilities", "config", "gui"]
 
 [dependencies]
 anyhow = "1.0.95"
