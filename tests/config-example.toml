@@ -1,6 +1,7 @@
 [[section]]
 name = "kernel release"
 command = "uname -s"
+interval = "oneshot"
 
 [[section]]
 name = "date and time"

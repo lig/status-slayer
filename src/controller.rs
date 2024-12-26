@@ -1,6 +1,8 @@
-use std::collections::HashMap;
 use std::process::Command;
-use std::time::{Duration, Instant};
+use std::{
+    collections::HashMap,
+    time::{Duration, Instant},
+};
 
 use anyhow::Result;
 use itertools::Itertools;
@@ -52,7 +54,7 @@ impl StatusController {
     pub async fn run(&mut self) -> Result<()> {
         self.status_sender.send(self.get_header()).await.unwrap();
 
-        let (block_sender, mut block_receiver) = mpsc::channel::<Block>(self.config.sections.len());
+        let (block_sender, mut block_receiver) = mpsc::channel::<Block>(1);
         for section in self.config.sections.clone() {
             let block_sender = block_sender.clone();
             tokio::spawn(async {
@@ -147,6 +149,7 @@ impl SectionController {
 
     async fn run(&mut self) {
         loop {
+            let tick = Instant::now();
             let output = Command::new("sh")
                 .args(["-c", &self.config.command])
                 .output()
@@ -162,11 +165,6 @@ impl SectionController {
 
             let stdout = String::from_utf8_lossy(output.stdout.trim_ascii_end());
 
-            self.sender
-                .send(Block::new("command", &self.config.name, &stdout))
-                .await
-                .unwrap();
-
             if self.cache.as_ref().is_none_or(|v| v != &stdout) {
                 let stdout = self.cache.insert(stdout.to_string());
                 self.sender
@@ -177,7 +175,7 @@ impl SectionController {
 
             match self.config.interval {
                 Interval::Oneshot => break,
-                Interval::Seconds(duration) => sleep(duration).await,
+                Interval::Seconds(duration) => sleep(duration - tick.elapsed()).await,
             }
         }
     }
