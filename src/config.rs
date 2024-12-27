@@ -12,7 +12,10 @@ pub struct Config {
 impl Config {
     pub fn from_file(config_path: &Path) -> Result<Self> {
         if !config_path.is_file() {
-            bail!("Config file doesn't exist or is not a regular file")
+            bail!(
+                "Config file `{}` doesn't exist or is not a regular file",
+                config_path.to_string_lossy()
+            )
         }
         Ok(
             toml::from_str(&fs::read_to_string(config_path).expect("Cannot read config file"))

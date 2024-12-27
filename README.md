@@ -25,10 +25,10 @@ cargo install --locked stlayer
 Add the following to your Sway configuration file (`~/.config/sway/config`):
 
 ```bash
-status_command stslayer --config <path to config>
+status_command stslayer [--config <path to config>]
 ```
 
-Replace `<path to config>` with the path to your configuration file.
+Replace `<path to config>` with the path to your configuration file. Default config path is `$XDG_CONFIG_HOME/stslayer/config.toml`.
 
 ### Configuration
 
