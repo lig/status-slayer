@@ -1,10 +1,16 @@
 use std::{fs, path::Path, time::Duration};
 
 use anyhow::{bail, Result};
-use serde::{de, Deserialize};
+use serde::{de, Deserialize, Deserializer};
 
 #[derive(Debug, Deserialize, PartialEq)]
 pub struct Config {
+    #[serde(
+        deserialize_with = "deserialize_duration_from_millis",
+        default = "Config::default_min_interval"
+    )]
+    /// Minimal update interval in milliseconds. Default: `100`.
+    pub min_interval: Duration,
     #[serde(alias = "section")]
     pub sections: Vec<Section>,
 }
@@ -21,6 +27,10 @@ impl Config {
             toml::from_str(&fs::read_to_string(config_path).expect("Cannot read config file"))
                 .expect("Config file format error"),
         )
+    }
+
+    pub fn default_min_interval() -> Duration {
+        Duration::from_millis(100)
     }
 }
 
@@ -65,6 +75,24 @@ impl<'de> Deserialize<'de> for Interval {
     }
 }
 
+fn deserialize_duration_from_millis<'de, D>(deserializer: D) -> Result<Duration, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let value: serde_json::Value = Deserialize::deserialize(deserializer)?;
+    match value {
+        serde_json::Value::Number(n) if n.is_u64() => {
+            let millis = n.as_u64().unwrap();
+            if millis >= 1 {
+                Ok(Duration::from_millis(millis))
+            } else {
+                Err(de::Error::custom("Value must be greater or equal `1`"))
+            }
+        }
+        _ => Err(de::Error::custom("Invalid milliseconds value")),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::time::Duration;
@@ -97,6 +125,7 @@ mod tests {
         assert_eq!(
             config,
             Config {
+                min_interval: Config::default_min_interval(),
                 sections: vec![
                     Section {
                         name: "oneshot interval".to_string(),

@@ -35,6 +35,8 @@ Replace `<path to config>` with the path to your configuration file. Default con
 Status Slayer uses a TOML-based configuration file. Below is an example:
 
 ```toml
+min_interval = 100
+
 [[section]]
 name = "kernel name"
 command = "uname -s"
@@ -46,6 +48,7 @@ command = 'date "+%Y-%m-%d %H:%M:%S"'
 ```
 
 ### Configuration Options
+- **`min_interval`**: Minimal global status update interval in milliseconds. Updates won't be sent to Sway more often than that (default: `100`).
 - **`name`**: A label for the section.
 - **`command`**: The shell command to execute for the section.
 - **`interval`**: The interval in seconds to execute the command (default: `1`). Use "oneshot" for commands that run only once.

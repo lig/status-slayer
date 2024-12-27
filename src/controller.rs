@@ -197,6 +197,7 @@ mod tests {
 
         let status_controller = StatusController::new(
             Config {
+                min_interval: Config::default_min_interval(),
                 sections: vec![Section {
                     name: "foo".to_string(),
                     command: "test".to_string(),
