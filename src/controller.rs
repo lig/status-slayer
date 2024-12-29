@@ -4,11 +4,13 @@ use std::{collections::HashMap, time::Instant};
 use anyhow::Result;
 use itertools::Itertools;
 use serde::Serialize;
+use tokio::io::{self, AsyncBufReadExt, BufReader};
 use tokio::{
     sync::mpsc::{self, Sender},
     time::sleep,
 };
 
+use crate::protocol::Event;
 use crate::{
     config::{Config, Interval, Section},
     protocol::{Block, Header, Status},
@@ -47,8 +49,10 @@ impl StatusController {
     }
 
     pub async fn run(&mut self) -> Result<()> {
-        self.send_header().await;
         let mut block_receiver = self.spawn_section_controllers();
+        let mut _events_receiver = self.spawn_event_listener();
+
+        self.send_header().await;
         self.initialize_status(&mut block_receiver).await;
 
         self.status_sender.send(self.get_status()).await.unwrap();
@@ -80,6 +84,17 @@ impl StatusController {
             });
         }
         block_receiver
+    }
+
+    fn spawn_event_listener(&self) -> mpsc::Receiver<Event> {
+        let (event_sender, event_receiver) = mpsc::channel::<Event>(1);
+
+        tokio::spawn(async {
+            let mut event_listener = EventListener::new(event_sender);
+            event_listener.run().await;
+        });
+
+        event_receiver
     }
 
     async fn initialize_status(&mut self, block_receiver: &mut mpsc::Receiver<Block>) {
@@ -179,6 +194,30 @@ impl SectionController {
                 Interval::Oneshot => break,
                 Interval::Seconds(duration) => sleep(duration - tick.elapsed()).await,
             }
+        }
+    }
+}
+
+struct EventListener {
+    sender: mpsc::Sender<Event>,
+}
+
+impl EventListener {
+    fn new(sender: mpsc::Sender<Event>) -> Self {
+        Self { sender }
+    }
+
+    async fn run(&mut self) {
+        let reader = BufReader::new(io::stdin());
+        let mut lines = reader.lines();
+
+        assert!(lines.next_line().await.unwrap() == Some("[".to_string()));
+
+        let mut line_number = 0;
+        while let Some(line) = lines.next_line().await.unwrap() {
+            let event: Event = serde_json::from_str(line.trim_start_matches(',')).unwrap();
+            eprintln!("{}: {:?}", line_number, event);
+            line_number += 1;
         }
     }
 }

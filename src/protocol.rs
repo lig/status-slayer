@@ -2,7 +2,7 @@
  * Swaybar Protocol implementation.
  * See: https://man.archlinux.org/man/swaybar-protocol.7.en
  */
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use signal_hook::consts::{SIGCONT, SIGSTOP};
 
 #[derive(Debug, Serialize)]
@@ -117,7 +117,7 @@ pub struct Block {
     pub markup: Markup,
 }
 
-impl Block{
+impl Block {
     pub fn new(name: &str, instance: &str, full_text: &str) -> Self {
         Self {
             name: name.to_string(),
@@ -141,15 +141,42 @@ impl Block{
     }
 }
 
+#[derive(Debug, Deserialize, PartialEq)]
+pub struct Event {
+    /// The name of the block, if set
+    pub name: String,
+    /// The instance of the block, if set
+    pub instance: String,
+    /// The x location that the click occurred at
+    pub x: u64,
+    /// The y location that the click occurred at
+    pub y: u64,
+    /// The x11 button number for the click.
+    /// If the button does not have an x11 button mapping, this will be 0.
+    pub button: u8,
+    /// The event code that corresponds to the button for the click
+    pub event: u64,
+    /// The x location of the click relative to the top-left of the block
+    pub relative_x: u64,
+    /// The y location of the click relative to the top-left of the block
+    pub relative_y: u64,
+    /// The width of the block in pixels
+    pub width: u64,
+    /// The height of the block in pixels
+    pub height: u64,
+    /// [Undocumented] UI scale?
+    pub scale: u8,
+}
+
 #[cfg(test)]
 mod tests {
     use pretty_assertions::assert_eq;
     use rstest::rstest;
 
-    use super::Block;
+    use super::{Block, Event};
 
     #[rstest]
-    fn should_implement_swaybar_protocol() {
+    fn should_produce_status() {
         let block1 = Block::new("test name 1", "test instance 1", "test full text 1");
         let block2 = Block::new("test name 2", "test instance 2", "test full text 2");
 
@@ -178,6 +205,42 @@ mod tests {
     "markup": "none"
   }
 ]"##
+        );
+    }
+
+    #[rstest]
+    fn should_parse_events() {
+        let event_data = r#"{
+	"name": "clock",
+	"instance": "edt",
+	"x": 1900,
+	"y": 10,
+	"button": 1,
+	"event": 274,
+	"relative_x": 100,
+	"relative_y": 8,
+	"width": 120,
+	"height": 18,
+    "scale": 1
+}"#;
+
+        let event: Event = serde_json::from_str(event_data).unwrap();
+
+        assert_eq!(
+            event,
+            Event {
+                name: "clock".to_string(),
+                instance: "edt".to_string(),
+                x: 1900,
+                y: 10,
+                button: 1,
+                event: 274,
+                relative_x: 100,
+                relative_y: 8,
+                width: 120,
+                height: 18,
+                scale: 1,
+            }
         );
     }
 }

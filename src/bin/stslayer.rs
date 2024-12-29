@@ -20,8 +20,8 @@ struct Args {
 async fn main() {
     let args = Args::parse();
 
-    let config_path = &args.config.to_owned().unwrap_or_else(defaul_config_path);
-    let config = Config::from_file(&config_path).unwrap_or_else(|err| {
+    let config_path = &args.config.to_owned().unwrap_or_else(default_config_path);
+    let config = Config::from_file(config_path).unwrap_or_else(|err| {
         eprintln!("Error: {}", err);
         process::exit(1);
     });
@@ -43,7 +43,7 @@ async fn main() {
     echo_task.await.unwrap();
 }
 
-fn defaul_config_path() -> PathBuf {
+fn default_config_path() -> PathBuf {
     dirs::config_dir()
         .unwrap_or(PathBuf::from_str(".config").unwrap())
         .join("stslayer/config.toml")
