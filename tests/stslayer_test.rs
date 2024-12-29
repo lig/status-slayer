@@ -30,7 +30,7 @@ fn test_config_example() {
     let mut stdout_lines = stdout.split('\n');
     assert_eq!(
         stdout_lines.next().unwrap(),
-        r#"{"version":1,"click_events":false,"cont_signal":18,"stop_signal":19}"#
+        r#"{"version":1,"click_events":true,"cont_signal":18,"stop_signal":19}"#
     );
     assert_eq!(stdout_lines.next().unwrap(), "[");
     for line in stdout_lines.by_ref().take(2) {

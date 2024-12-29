@@ -17,8 +17,7 @@ impl Header {
     pub fn new() -> Self {
         Self {
             version: 1,
-            // TODO: Handle click events
-            click_events: false,
+            click_events: true,
             cont_signal: SIGCONT,
             stop_signal: SIGSTOP,
         }

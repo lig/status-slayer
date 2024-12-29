@@ -47,9 +47,31 @@ impl StatusController {
     }
 
     pub async fn run(&mut self) -> Result<()> {
-        self.status_sender.send(self.get_header()).await.unwrap();
+        self.send_header().await;
+        let mut block_receiver = self.spawn_section_controllers();
+        self.initialize_status(&mut block_receiver).await;
 
-        let (block_sender, mut block_receiver) = mpsc::channel::<Block>(1);
+        self.status_sender.send(self.get_status()).await.unwrap();
+        let mut last_sent = Instant::now();
+
+        loop {
+            let block = block_receiver.recv().await.unwrap();
+            let section_num = self.section_index[&SectionId::new(&block.name, &block.instance)];
+            self.status.blocks[section_num] = block;
+
+            if last_sent.elapsed() > self.config.min_interval {
+                self.status_sender.send(self.get_status()).await.unwrap();
+                last_sent = Instant::now();
+            }
+        }
+    }
+
+    async fn send_header(&mut self) {
+        self.status_sender.send(self.get_header()).await.unwrap();
+    }
+
+    fn spawn_section_controllers(&mut self) -> mpsc::Receiver<Block> {
+        let (block_sender, block_receiver) = mpsc::channel::<Block>(1);
         for section in self.config.sections.clone() {
             let block_sender = block_sender.clone();
             tokio::spawn(async {
@@ -57,12 +79,13 @@ impl StatusController {
                 section_controller.run().await;
             });
         }
+        block_receiver
+    }
 
+    async fn initialize_status(&mut self, block_receiver: &mut mpsc::Receiver<Block>) {
         let mut initial_data: HashMap<SectionId, Block> = HashMap::new();
         while initial_data.len() < self.section_index.len() {
-            let block = tokio::select! {
-                block = block_receiver.recv() => block.unwrap(),
-            };
+            let block = block_receiver.recv().await.unwrap();
             initial_data
                 .entry(SectionId::new(&block.name, &block.instance))
                 .insert_entry(block);
@@ -74,22 +97,6 @@ impl StatusController {
                 .sorted_by_key(|v| v.0)
                 .map(|(_, block)| block),
         );
-
-        self.status_sender.send(self.get_status()).await.unwrap();
-        let mut last_sent = Instant::now();
-
-        loop {
-            let block = tokio::select! {
-                block = block_receiver.recv() => block.unwrap(),
-            };
-            let section_num = self.section_index[&SectionId::new(&block.name, &block.instance)];
-            self.status.blocks[section_num] = block;
-
-            if last_sent.elapsed() > self.config.min_interval {
-                self.status_sender.send(self.get_status()).await.unwrap();
-                last_sent = Instant::now();
-            }
-        }
     }
 
     fn get_header(&self) -> String {
@@ -205,7 +212,7 @@ mod tests {
         let header = status_controller.get_header();
         assert_eq!(
             header,
-            r#"{"version":1,"click_events":false,"cont_signal":18,"stop_signal":19}
+            r#"{"version":1,"click_events":true,"cont_signal":18,"stop_signal":19}
 ["#
         );
     }
