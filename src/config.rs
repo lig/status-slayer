@@ -6,10 +6,10 @@ use serde::{de, Deserialize, Deserializer};
 #[derive(Debug, Deserialize, PartialEq)]
 pub struct Config {
     #[serde(
-        deserialize_with = "deserialize_duration_from_millis",
+        deserialize_with = "deserialize_duration",
         default = "Config::default_min_interval"
     )]
-    /// Minimal update interval in milliseconds. Default: `100`.
+    /// Minimal update interval in seconds. Default: `0.1`.
     pub min_interval: Duration,
     #[serde(alias = "section")]
     pub sections: Vec<Section>,
@@ -62,34 +62,31 @@ impl<'de> Deserialize<'de> for Interval {
         let value: serde_json::Value = Deserialize::deserialize(deserializer)?;
         match value {
             serde_json::Value::String(s) if s.to_lowercase() == "oneshot" => Ok(Interval::Oneshot),
-            serde_json::Value::Number(n) if n.is_u64() => {
-                let secs = n.as_u64().unwrap();
-                if secs >= 1 {
-                    Ok(Interval::Seconds(Duration::from_secs(secs)))
-                } else {
-                    Err(de::Error::custom("Interval must be greater or equal `1`"))
-                }
-            }
+            serde_json::Value::Number(_) => deserialize_duration(value)
+                .map(Interval::Seconds)
+                .map_err(de::Error::custom),
             _ => Err(de::Error::custom("Invalid interval value")),
         }
     }
 }
 
-fn deserialize_duration_from_millis<'de, D>(deserializer: D) -> Result<Duration, D::Error>
+fn deserialize_duration<'de, D>(deserializer: D) -> Result<Duration, D::Error>
 where
     D: Deserializer<'de>,
 {
     let value: serde_json::Value = Deserialize::deserialize(deserializer)?;
     match value {
-        serde_json::Value::Number(n) if n.is_u64() => {
-            let millis = n.as_u64().unwrap();
-            if millis >= 1 {
+        serde_json::Value::Number(n) => {
+            let millis = (n.as_f64().unwrap() * 1000.).ceil() as u64;
+            if millis >= 100 {
                 Ok(Duration::from_millis(millis))
             } else {
-                Err(de::Error::custom("Value must be greater or equal `1`"))
+                Err(de::Error::custom(
+                    "Value must be greater or equal than `0.1`",
+                ))
             }
         }
-        _ => Err(de::Error::custom("Invalid milliseconds value")),
+        _ => Err(de::Error::custom("Invalid duration value")),
     }
 }
 

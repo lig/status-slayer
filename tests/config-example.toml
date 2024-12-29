@@ -1,4 +1,4 @@
-min_interval = 200
+min_interval = 0.2
 
 [[section]]
 name = "kernel release"

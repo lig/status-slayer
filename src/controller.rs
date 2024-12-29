@@ -1,8 +1,5 @@
 use std::process::Command;
-use std::{
-    collections::HashMap,
-    time::{Duration, Instant},
-};
+use std::{collections::HashMap, time::Instant};
 
 use anyhow::Result;
 use itertools::Itertools;
@@ -21,7 +18,6 @@ pub struct StatusController {
     config: Config,
     status_sender: Sender<String>,
     pretty: bool,
-    min_interval: Duration,
     section_index: HashMap<SectionId, usize>,
     status: Status,
 }
@@ -43,7 +39,6 @@ impl StatusController {
             config,
             status_sender: sender,
             pretty: false,
-            min_interval: Duration::from_secs(1),
             section_index,
             status: Status {
                 blocks: Vec::with_capacity(num_sections),
@@ -90,7 +85,7 @@ impl StatusController {
             let section_num = self.section_index[&SectionId::new(&block.name, &block.instance)];
             self.status.blocks[section_num] = block;
 
-            if last_sent.elapsed() > self.min_interval {
+            if last_sent.elapsed() > self.config.min_interval {
                 self.status_sender.send(self.get_status()).await.unwrap();
                 last_sent = Instant::now();
             }
