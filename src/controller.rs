@@ -50,7 +50,7 @@ impl StatusController {
 
     pub async fn run(&mut self) -> Result<()> {
         let mut block_receiver = self.spawn_section_controllers();
-        let mut _events_receiver = self.spawn_event_listener();
+        let mut event_receiver = self.spawn_event_listener();
 
         self.send_header().await;
         self.initialize_status(&mut block_receiver).await;
@@ -59,13 +59,21 @@ impl StatusController {
         let mut last_sent = Instant::now();
 
         loop {
-            let block = block_receiver.recv().await.unwrap();
-            let section_num = self.section_index[&SectionId::new(&block.name, &block.instance)];
-            self.status.blocks[section_num] = block;
+            tokio::select! {
+                block = block_receiver.recv() => {
+                    let block = block.unwrap();
 
-            if last_sent.elapsed() > self.config.min_interval {
-                self.status_sender.send(self.get_status()).await.unwrap();
-                last_sent = Instant::now();
+                    let section_num = self.section_index[&SectionId::new(&block.name, &block.instance)];
+                    self.status.blocks[section_num] = block;
+
+                    if last_sent.elapsed() > self.config.min_interval {
+                        self.status_sender.send(self.get_status()).await.unwrap();
+                        last_sent = Instant::now();
+                    }
+                }
+                event = event_receiver.recv() => {
+                    eprintln!("{:?}", event)
+                }
             }
         }
     }
@@ -213,11 +221,9 @@ impl EventListener {
 
         assert!(lines.next_line().await.unwrap() == Some("[".to_string()));
 
-        let mut line_number = 0;
         while let Some(line) = lines.next_line().await.unwrap() {
             let event: Event = serde_json::from_str(line.trim_start_matches(',')).unwrap();
-            eprintln!("{}: {:?}", line_number, event);
-            line_number += 1;
+            self.sender.send(event).await.unwrap();
         }
     }
 }
