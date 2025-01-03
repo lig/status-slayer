@@ -40,6 +40,8 @@ pub struct Section {
     pub command: String,
     #[serde(default)]
     pub interval: Interval,
+    #[serde(default)]
+    pub on_click: Option<String>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -128,16 +130,19 @@ mod tests {
                         name: "oneshot interval".to_string(),
                         command: "uname -r".to_string(),
                         interval: Interval::Oneshot,
+                        on_click: None,
                     },
                     Section {
                         name: "default interval".to_string(),
                         command: r#"date "+%Y-%m-%d %H:%M:%S""#.to_string(),
                         interval: Interval::default(),
+                        on_click: None,
                     },
                     Section {
                         name: "custom interval".to_string(),
                         command: r#"date "+%Y-%m-%d %H:%M""#.to_string(),
                         interval: Interval::Seconds(Duration::from_secs(60)),
+                        on_click: None,
                     },
                 ]
             }

@@ -249,6 +249,7 @@ mod tests {
                     name: "foo".to_string(),
                     command: "test".to_string(),
                     interval: Interval::Oneshot,
+                    on_click: None,
                 }],
             },
             tx,
