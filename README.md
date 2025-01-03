@@ -45,6 +45,7 @@ interval = "oneshot"
 [[section]]
 name = "date and time"
 command = 'date "+%Y-%m-%d %H:%M:%S"'
+on_click = 'foot sh -c "cal -ywvc4 && read -sn1"'
 ```
 
 ### Configuration Options
@@ -52,6 +53,7 @@ command = 'date "+%Y-%m-%d %H:%M:%S"'
 - **`name`**: A label for the section.
 - **`command`**: The shell command to execute for the section.
 - **`interval`**: The interval in seconds to execute the command (default: `1`). Use "oneshot" for commands that run only once.
+- **`on_click`**: A command to launch on click in the area of the corresponding section.
 
 > Minimum value for all intervals is `0.1`.
 
