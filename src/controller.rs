@@ -7,6 +7,7 @@ use fork::{daemon, Fork};
 use itertools::Itertools;
 use serde::Serialize;
 use tokio::io::{self, AsyncBufReadExt, BufReader};
+use tokio::sync::mpsc::Receiver;
 use tokio::{
     sync::mpsc::{self, Sender},
     time::sleep,
@@ -21,9 +22,9 @@ use crate::{
 pub struct StatusController {
     config: Config,
     status_sender: Sender<String>,
+    block_receiver: Receiver<Block>,
     pretty: bool,
-    section_index: HashMap<SectionId, usize>,
-    section_controllers: Vec<Arc<SectionController>>,
+    section_registry: HashMap<SectionId, SectionRecord>,
     status: Status,
 }
 
@@ -33,19 +34,31 @@ impl StatusController {
             !config.sections.is_empty(),
             "At least one section must be defined in config"
         );
-        let section_index: HashMap<SectionId, usize> = config
+        let (block_sender, block_receiver) = mpsc::channel::<Block>(1);
+        let section_registry: HashMap<SectionId, SectionRecord> = config
             .sections
             .iter()
             .enumerate()
-            .map(|(n, section)| (SectionId::new("command", &section.name), n))
+            .map(|(n, section)| {
+                (
+                    SectionId::new("command", &section.name),
+                    SectionRecord {
+                        order: n,
+                        controller: Arc::new(SectionController::new(
+                            section.to_owned(),
+                            block_sender.clone(),
+                        )),
+                    },
+                )
+            })
             .collect();
-        let num_sections = section_index.len();
+        let num_sections = section_registry.len();
         StatusController {
             config,
             status_sender: sender,
+            block_receiver,
             pretty: false,
-            section_index,
-            section_controllers: Vec::with_capacity(num_sections),
+            section_registry,
             status: Status {
                 blocks: Vec::with_capacity(num_sections),
             },
@@ -53,34 +66,33 @@ impl StatusController {
     }
 
     pub async fn run(&mut self) -> Result<()> {
-        let mut block_receiver = self.spawn_section_controllers();
+        self.spawn_section_controllers();
         let mut event_receiver = self.spawn_event_listener();
 
         self.send_header().await;
-        self.initialize_status(&mut block_receiver).await;
+        self.initialize_status().await;
 
         let mut dirty = false;
         loop {
             tokio::select! {
-                block = block_receiver.recv() => {
+                block = self.block_receiver.recv() => {
                     let block = block.unwrap();
 
-                    let section_num = self.section_index[&SectionId::new(&block.name, &block.instance)];
+                    let section_record = &self.section_registry[&SectionId::new(&block.name, &block.instance)];
 
-                    if self.status.blocks[section_num] == block {
+                    if self.status.blocks[section_record.order] == block {
                         continue;
                     }
 
-                    self.status.blocks[section_num] = block;
+                    self.status.blocks[section_record.order] = block;
                     dirty = true;
                 }
                 event = event_receiver.recv() => {
                     let event = event.unwrap();
 
                     let section_controller = Arc::clone(
-                        &self.section_controllers[
-                            self.section_index[
-                                &SectionId::new(&event.name, &event.instance)]]);
+                        &self.section_registry[
+                                &SectionId::new(&event.name, &event.instance)].controller);
 
                     section_controller.on_click(event).await;
                 }
@@ -99,20 +111,16 @@ impl StatusController {
         self.status_sender.send(self.get_header()).await.unwrap();
     }
 
-    fn spawn_section_controllers(&mut self) -> mpsc::Receiver<Block> {
-        let (block_sender, block_receiver) = mpsc::channel::<Block>(1);
-
-        for section in self.config.sections.clone() {
-            let section_controller =
-                Arc::new(SectionController::new(section, block_sender.clone()));
-            self.section_controllers
-                .push(Arc::clone(&section_controller));
-
+    fn spawn_section_controllers(&self) {
+        for section_controller in self
+            .section_registry
+            .values()
+            .map(|record| Arc::clone(&record.controller))
+        {
             tokio::spawn(async move {
                 section_controller.run().await;
             });
         }
-        block_receiver
     }
 
     fn spawn_event_listener(&self) -> mpsc::Receiver<Event> {
@@ -126,21 +134,26 @@ impl StatusController {
         event_receiver
     }
 
-    async fn initialize_status(&mut self, block_receiver: &mut mpsc::Receiver<Block>) {
+    async fn initialize_status(&mut self) {
         let mut initial_data: HashMap<SectionId, Block> = HashMap::new();
-        while initial_data.len() < self.section_index.len() {
-            let block = block_receiver.recv().await.unwrap();
+
+        while initial_data.len() < self.section_registry.len() {
+            let block = self.block_receiver.recv().await.unwrap();
             initial_data
                 .entry(SectionId::new(&block.name, &block.instance))
                 .insert_entry(block);
         }
+
         self.status.blocks.extend(
             initial_data
                 .into_iter()
-                .map(|(section_id, block)| (self.section_index[&section_id], block))
+                .map(|(section_id, block)| {
+                    (&self.section_registry[&section_id].order, block)
+                })
                 .sorted_by_key(|v| v.0)
                 .map(|(_, block)| block),
         );
+
         self.status_sender.send(self.get_status()).await.unwrap();
     }
 
@@ -162,6 +175,11 @@ impl StatusController {
             false => serde_json::to_string(&value).unwrap(),
         }
     }
+}
+
+struct SectionRecord {
+    order: usize,
+    controller: Arc<SectionController>,
 }
 
 #[derive(PartialEq, Eq, Hash)]
