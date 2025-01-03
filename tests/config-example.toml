@@ -4,8 +4,9 @@ min_interval = 0.2
 name = "kernel release"
 command = "uname -s"
 interval = "oneshot"
-on_click = "xdg-open /etc/os-release"
+on_secondary_click = "xdg-open /etc/os-release"
 
 [[section]]
 name = "date and time"
 command = 'date "+%Y-%m-%d %H:%M:%S"'
+on_click = 'foot sh -c "cal -ywvc4 && read -sn1"'
