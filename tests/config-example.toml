@@ -4,6 +4,7 @@ min_interval = 0.2
 name = "kernel release"
 command = "uname -s"
 interval = "oneshot"
+on_click = "xdg-open /etc/os-release"
 
 [[section]]
 name = "date and time"

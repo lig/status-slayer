@@ -23,10 +23,10 @@ impl Config {
                 config_path.to_string_lossy()
             )
         }
-        Ok(
-            toml::from_str(&fs::read_to_string(config_path).expect("Cannot read config file"))
-                .expect("Config file format error"),
+        Ok(toml::from_str(
+            &fs::read_to_string(config_path).expect("Cannot read config file"),
         )
+        .expect("Config file format error"))
     }
 
     pub fn default_min_interval() -> Duration {
@@ -63,7 +63,9 @@ impl<'de> Deserialize<'de> for Interval {
     {
         let value: serde_json::Value = Deserialize::deserialize(deserializer)?;
         match value {
-            serde_json::Value::String(s) if s.to_lowercase() == "oneshot" => Ok(Interval::Oneshot),
+            serde_json::Value::String(s) if s.to_lowercase() == "oneshot" => {
+                Ok(Interval::Oneshot)
+            }
             serde_json::Value::Number(_) => deserialize_duration(value)
                 .map(Interval::Seconds)
                 .map_err(de::Error::custom),

@@ -1,7 +1,9 @@
 use std::process::Command;
+use std::sync::Arc;
 use std::{collections::HashMap, time::Instant};
 
 use anyhow::Result;
+use fork::{daemon, Fork};
 use itertools::Itertools;
 use serde::Serialize;
 use tokio::io::{self, AsyncBufReadExt, BufReader};
@@ -21,6 +23,7 @@ pub struct StatusController {
     status_sender: Sender<String>,
     pretty: bool,
     section_index: HashMap<SectionId, usize>,
+    section_controllers: Vec<Arc<SectionController>>,
     status: Status,
 }
 
@@ -42,6 +45,7 @@ impl StatusController {
             status_sender: sender,
             pretty: false,
             section_index,
+            section_controllers: Vec::with_capacity(num_sections),
             status: Status {
                 blocks: Vec::with_capacity(num_sections),
             },
@@ -55,24 +59,37 @@ impl StatusController {
         self.send_header().await;
         self.initialize_status(&mut block_receiver).await;
 
-        self.status_sender.send(self.get_status()).await.unwrap();
-        let mut last_sent = Instant::now();
-
+        let mut dirty = false;
         loop {
             tokio::select! {
                 block = block_receiver.recv() => {
                     let block = block.unwrap();
 
                     let section_num = self.section_index[&SectionId::new(&block.name, &block.instance)];
-                    self.status.blocks[section_num] = block;
 
-                    if last_sent.elapsed() > self.config.min_interval {
-                        self.status_sender.send(self.get_status()).await.unwrap();
-                        last_sent = Instant::now();
+                    if self.status.blocks[section_num] == block {
+                        continue;
                     }
+
+                    self.status.blocks[section_num] = block;
+                    dirty = true;
                 }
                 event = event_receiver.recv() => {
-                    eprintln!("{:?}", event)
+                    let event = event.unwrap();
+
+                    let section_controller = Arc::clone(
+                        &self.section_controllers[
+                            self.section_index[
+                                &SectionId::new(&event.name, &event.instance)]]);
+
+                    section_controller.on_click(event).await;
+                }
+                _ = sleep(self.config.min_interval) => {
+                    if !dirty {
+                        continue
+                    }
+                    self.status_sender.send(self.get_status()).await.unwrap();
+                    dirty = false;
                 }
             }
         }
@@ -84,10 +101,14 @@ impl StatusController {
 
     fn spawn_section_controllers(&mut self) -> mpsc::Receiver<Block> {
         let (block_sender, block_receiver) = mpsc::channel::<Block>(1);
+
         for section in self.config.sections.clone() {
-            let block_sender = block_sender.clone();
-            tokio::spawn(async {
-                let mut section_controller = SectionController::new(section, block_sender);
+            let section_controller =
+                Arc::new(SectionController::new(section, block_sender.clone()));
+            self.section_controllers
+                .push(Arc::clone(&section_controller));
+
+            tokio::spawn(async move {
                 section_controller.run().await;
             });
         }
@@ -120,6 +141,7 @@ impl StatusController {
                 .sorted_by_key(|v| v.0)
                 .map(|(_, block)| block),
         );
+        self.status_sender.send(self.get_status()).await.unwrap();
     }
 
     fn get_header(&self) -> String {
@@ -160,26 +182,22 @@ impl SectionId {
 struct SectionController {
     config: Section,
     sender: Sender<Block>,
-    cache: Option<String>,
 }
 
 impl SectionController {
     fn new(config: Section, sender: Sender<Block>) -> Self {
-        Self {
-            config,
-            sender,
-            cache: None,
-        }
+        Self { config, sender }
     }
 
-    async fn run(&mut self) {
+    async fn run(&self) {
         loop {
             let tick = Instant::now();
             let output = Command::new("sh")
                 .args(["-c", &self.config.command])
                 .output()
-                .unwrap_or_else(|_| panic!("Failed to execute command `{}`", &self.config.command));
-
+                .unwrap_or_else(|_| {
+                    panic!("Failed to execute command `{}`", &self.config.command)
+                });
             if !output.status.success() {
                 panic!(
                     "Command `{}` failed with error:\n{}",
@@ -190,17 +208,27 @@ impl SectionController {
 
             let stdout = String::from_utf8_lossy(output.stdout.trim_ascii_end());
 
-            if self.cache.as_ref().is_none_or(|v| v != &stdout) {
-                let stdout = self.cache.insert(stdout.to_string());
-                self.sender
-                    .send(Block::new("command", &self.config.name, stdout))
-                    .await
-                    .unwrap();
-            }
+            self.sender
+                .send(Block::new("command", &self.config.name, &stdout))
+                .await
+                .unwrap();
 
             match self.config.interval {
                 Interval::Oneshot => break,
                 Interval::Seconds(duration) => sleep(duration - tick.elapsed()).await,
+            }
+        }
+    }
+
+    async fn on_click(&self, _event: Event) {
+        if let Some(on_click) = &self.config.on_click {
+            if let Ok(Fork::Child) = daemon(false, true) {
+                Command::new("sh")
+                    .args(["-c", on_click])
+                    .output()
+                    .unwrap_or_else(|_| {
+                        panic!("Failed to execute command `{}`", &self.config.command)
+                    });
             }
         }
     }
@@ -222,7 +250,8 @@ impl EventListener {
         assert!(lines.next_line().await.unwrap() == Some("[".to_string()));
 
         while let Some(line) = lines.next_line().await.unwrap() {
-            let event: Event = serde_json::from_str(line.trim_start_matches(',')).unwrap();
+            let event: Event =
+                serde_json::from_str(line.trim_start_matches(',')).unwrap();
             self.sender.send(event).await.unwrap();
         }
     }

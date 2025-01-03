@@ -30,14 +30,14 @@ impl Default for Header {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, PartialEq)]
 #[serde(untagged)]
 pub enum MinWidth {
     Pixels(u32),
     WidthOf(String),
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum Align {
     Left,
@@ -45,7 +45,7 @@ pub enum Align {
     Center,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum Markup {
     Pango,
@@ -58,7 +58,7 @@ pub struct Status {
     pub blocks: Vec<Block>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, PartialEq)]
 pub struct Block {
     /* A name for the block. This is only used to identify the block for click events.
     If set, each block should have a unique name and instance pair. */
