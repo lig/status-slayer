@@ -100,7 +100,11 @@ impl StatusController {
                         &self.section_registry[
                                 &SectionId::new(&event.name, &event.instance)].controller);
 
-                    section_controller.on_click(event).await;
+                    match &event.button {
+                        1 => section_controller.on_click(event),
+                        2 => section_controller.on_secondary_click(event),
+                        _ => (),
+                    }
                 }
                 _ = sleep(self.config.min_interval) => {
                     if !dirty {
@@ -214,6 +218,7 @@ mod tests {
                     command: "test".to_string(),
                     interval: Interval::Oneshot,
                     on_click: None,
+                    on_secondary_click: None,
                 }],
             },
             tx,

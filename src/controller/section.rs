@@ -51,16 +51,26 @@ impl SectionController {
         }
     }
 
-    pub(super) async fn on_click(&self, _event: Event) {
-        if let Some(on_click) = &self.config.on_click {
-            if let Ok(Fork::Child) = daemon(false, true) {
-                Command::new("sh")
-                    .args(["-c", on_click])
-                    .output()
-                    .unwrap_or_else(|_| {
-                        panic!("Failed to execute command `{}`", &self.config.command)
-                    });
-            }
+    pub(super) fn on_click(&self, _event: Event) {
+        if let Some(cmd) = &self.config.on_click {
+            self.handle_click(cmd);
+        }
+    }
+
+    pub(super) fn on_secondary_click(&self, _event: Event) {
+        if let Some(cmd) = &self.config.on_secondary_click {
+            self.handle_click(cmd);
+        }
+    }
+
+    fn handle_click(&self, cmd: &str) {
+        if let Ok(Fork::Child) = daemon(false, true) {
+            Command::new("sh")
+                .args(["-c", cmd])
+                .output()
+                .unwrap_or_else(|_| {
+                    panic!("Failed to execute command `{}`", &self.config.command)
+                });
         }
     }
 }

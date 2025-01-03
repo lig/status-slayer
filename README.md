@@ -53,7 +53,8 @@ on_click = 'foot sh -c "cal -ywvc4 && read -sn1"'
 - **`name`**: A label for the section.
 - **`command`**: The shell command to execute for the section.
 - **`interval`**: The interval in seconds to execute the command (default: `1`). Use "oneshot" for commands that run only once.
-- **`on_click`**: A command to launch on click in the area of the corresponding section.
+- **`on_click`**: A command to launch on primary (usually left) click in the area of the corresponding section.
+- **`on_secondary_click`**: A command to launch on secondary (usually right) click in the area of the corresponding section.
 
 > Minimum value for all intervals is `0.1`.
 
