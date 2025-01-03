@@ -1,35 +1,41 @@
-use std::process::Command;
+use std::collections::HashMap;
 use std::sync::Arc;
-use std::{collections::HashMap, time::Instant};
 
 use anyhow::Result;
-use fork::{daemon, Fork};
 use itertools::Itertools;
 use serde::Serialize;
-use tokio::io::{self, AsyncBufReadExt, BufReader};
 use tokio::sync::mpsc::Receiver;
-use tokio::{
-    sync::mpsc::{self, Sender},
-    time::sleep,
-};
+use tokio::{sync::mpsc, time::sleep};
 
+use super::{EventListener, SectionController};
 use crate::protocol::Event;
 use crate::{
-    config::{Config, Interval, Section},
+    config::Config,
     protocol::{Block, Header, Status},
 };
 
 pub struct StatusController {
     config: Config,
-    status_sender: Sender<String>,
+    status_sender: mpsc::Sender<String>,
     block_receiver: Receiver<Block>,
     pretty: bool,
     section_registry: HashMap<SectionId, SectionRecord>,
     status: Status,
 }
 
+struct SectionRecord {
+    order: usize,
+    controller: Arc<SectionController>,
+}
+
+#[derive(PartialEq, Eq, Hash)]
+struct SectionId {
+    module: String,
+    name: String,
+}
+
 impl StatusController {
-    pub fn new(config: Config, sender: Sender<String>) -> Self {
+    pub fn new(config: Config, sender: mpsc::Sender<String>) -> Self {
         assert!(
             !config.sections.is_empty(),
             "At least one section must be defined in config"
@@ -177,100 +183,11 @@ impl StatusController {
     }
 }
 
-struct SectionRecord {
-    order: usize,
-    controller: Arc<SectionController>,
-}
-
-#[derive(PartialEq, Eq, Hash)]
-struct SectionId {
-    module: String,
-    name: String,
-}
-
 impl SectionId {
     fn new(module: &str, name: &str) -> Self {
         Self {
             module: module.to_string(),
             name: name.to_string(),
-        }
-    }
-}
-
-struct SectionController {
-    config: Section,
-    sender: Sender<Block>,
-}
-
-impl SectionController {
-    fn new(config: Section, sender: Sender<Block>) -> Self {
-        Self { config, sender }
-    }
-
-    async fn run(&self) {
-        loop {
-            let tick = Instant::now();
-            let output = Command::new("sh")
-                .args(["-c", &self.config.command])
-                .output()
-                .unwrap_or_else(|_| {
-                    panic!("Failed to execute command `{}`", &self.config.command)
-                });
-            if !output.status.success() {
-                panic!(
-                    "Command `{}` failed with error:\n{}",
-                    &self.config.command,
-                    String::from_utf8_lossy(&output.stderr)
-                );
-            }
-
-            let stdout = String::from_utf8_lossy(output.stdout.trim_ascii_end());
-
-            self.sender
-                .send(Block::new("command", &self.config.name, &stdout))
-                .await
-                .unwrap();
-
-            match self.config.interval {
-                Interval::Oneshot => break,
-                Interval::Seconds(duration) => sleep(duration - tick.elapsed()).await,
-            }
-        }
-    }
-
-    async fn on_click(&self, _event: Event) {
-        if let Some(on_click) = &self.config.on_click {
-            if let Ok(Fork::Child) = daemon(false, true) {
-                Command::new("sh")
-                    .args(["-c", on_click])
-                    .output()
-                    .unwrap_or_else(|_| {
-                        panic!("Failed to execute command `{}`", &self.config.command)
-                    });
-            }
-        }
-    }
-}
-
-struct EventListener {
-    sender: mpsc::Sender<Event>,
-}
-
-impl EventListener {
-    fn new(sender: mpsc::Sender<Event>) -> Self {
-        Self { sender }
-    }
-
-    async fn run(&mut self) {
-        let reader = BufReader::new(io::stdin());
-        let mut lines = reader.lines();
-
-        assert!(lines.next_line().await.unwrap() == Some("[".to_string()));
-
-        while let Some(line) = lines.next_line().await.unwrap() {
-            let event: Event =
-                serde_json::from_str(line.trim_start_matches(',')).unwrap();
-            self.sender.send(event).await.unwrap();
         }
     }
 }
