@@ -6,9 +6,9 @@ Status Slayer is a configurable implementation of the `status` command for [Sway
 - **Flexible Configuration**: Configure commands and intervals using a simple [TOML](https://toml.io/) format.
 - **Efficient Updates**: Sends updates to Swaybar only when a command's output changes, ensuring minimal latency.
 - **Custom Intervals**: Supports interval-based commands or one-shot execution for static values.
+- **Click Actions**: Allows to run an arbitrary command in response to a click.
 
 ### Planned Features
-- Configurable click actions for sections.
 - Color configuration per section.
 - Pango markup support for rich text formatting.
 - Built-in modules (e.g., `hostname`, `date`, `memory`, `cpu`, `network`) that eliminate the need for external commands.
