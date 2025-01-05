@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::process::exit;
 use std::sync::Arc;
 
 use anyhow::Result;
@@ -94,17 +95,20 @@ impl StatusController {
                     dirty = true;
                 }
                 event = event_receiver.recv() => {
-                    let event = event.unwrap();
+                    if let Some(event) = event {
+                        let section_controller = Arc::clone(
+                            &self.section_registry[
+                                    &SectionId::new(&event.name, &event.instance)].controller);
 
-                    let section_controller = Arc::clone(
-                        &self.section_registry[
-                                &SectionId::new(&event.name, &event.instance)].controller);
-
-                    match &event.button {
-                        1 => section_controller.on_click(event),
-                        2 => section_controller.on_secondary_click(event),
-                        _ => (),
-                    }
+                        match &event.button {
+                            1 => section_controller.on_click(event).await,
+                            2 => section_controller.on_secondary_click(event).await,
+                            _ => (),
+                        }
+                    } else {
+                        eprintln!("Error: keyborad listner has exited");
+                        exit(1);
+                    };
                 }
                 _ = sleep(self.config.min_interval) => {
                     if !dirty {
